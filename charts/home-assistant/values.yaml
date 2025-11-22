@@ -10,9 +10,9 @@ image:
   # Repository for the Home Assistant image
   repository: ghcr.io/home-assistant/home-assistant
   # Image pull policy
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "stable"
 
 # List of imagePullSecrets for private image repositories
 imagePullSecrets: []
@@ -35,34 +35,13 @@ serviceAccount:
 podAnnotations: {}
 
 # Pod security context settings
-podSecurityContext:
-  {}
-  # runAsUser: 568
-  # runAsGroup: 568
-  # fsGroup: 568
-  # fsGroupChangePolicy: "OnRootMismatch"
+podSecurityContext: {}
 
 # Environment variables
 env: []
-# - name: TZ
-#   value: Europe/Prague
-# - name: SOME_VAR_FROM_CONFIG_MAP
-#   valueFrom:
-#     configMapRef:
-#       name: configmap-name
-#       key: config-key
-# - name: SOME_SECRET
-#   valueFrom:
-#     secretKeyRef:
-#       name: secret-name
-#       key: secret-key
 
 # Use environment variables from ConfigMaps or Secrets
 envFrom: []
-# - configMapRef:
-#     name: config-map-name
-# - secretRef:
-#     name: secret-name
 
 hostPort:
   # Enable 'hostPort' or not
@@ -72,34 +51,17 @@ hostPort:
 # Specifies if the containers should be started in hostNetwork mode.
 #
 # Required for use auto-discovery feature of Home Assistant
-hostNetwork: false
+hostNetwork: true
 
 # Set the dnsPolicy (you'll want ClusterFirstWithHostNet if running on hostNetwork to reac
 # other k8s services via DNS
-# dnsPolicy: ClusterFirst
+dnsPolicy: ClusterFirstWithHostNet
 
 # Container security context settings
-securityContext:
-  {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext: {}
 
 # Pod's DNS Configuration
-# https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
-# This value is useful if you need to reduce the DNS load: set "ndots" to 0 and only use FQDNs.
 dnsConfig: {}
-  # nameservers:
-  #   - 1.2.3.4
-  # searches:
-  #   - ns1.svc.cluster-domain.example
-  #   - my.dns.search.suffix
-  # options:
-  #   - name: ndots
-  #     value: "2"
 
 # Service settings
 service:
@@ -113,38 +75,21 @@ service:
 # Ingress settings
 ingress:
   # Enable ingress for home assistant
-  enabled: false
+  enabled: true
   # Enable external ingress (cannot be true when ingress.enabled is true)
   external: false
-  className: ""
+  className: none
   labels: {}
-  annotations:
-    {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+  annotations: {}
   hosts:
-    - host: chart-example.local
+    - host: ha.k3s.home
       paths:
         - path: /
           pathType: ImplementationSpecific
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 # Resource settings for the container
-resources:
-  {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+resources: {}
 
 # Node selector settings for scheduling the pod on specific nodes
 nodeSelector: {}
@@ -159,24 +104,11 @@ affinity: {}
 priorityClassName: ""
 
 initContainers: []
-# Example of integrating a custom component before starting the Home Assistant container
-# Uses emptyDir custom-components, see below
-# - name: init-panasonic-cc
-#   image: alpine/git
-#   command: [ "/bin/sh", "-c" ]
-#   args:
-#   - |
-#     git clone https://github.com/sockless-coding/panasonic_cc.git /git/panasonic_cc
-#     cp -r /git/panasonic_cc/custom_components/panasonic_cc/* /panasonic_cc
-#     chown -R 1000:1000 /panasonic_cc/*
-#   volumeMounts:
-#   - name: custom-components
-#     mountPath: /panasonic_cc
 
 # Configuration for Home Assistant
 configuration:
   # Enable or disable the configuration setup for Home Assistant
-  enabled: false
+  enabled: true
   # Force init will merge the current configuration file with the default configuration on every start
   # This is useful when you want to ensure that the configuration file is always up to date
   forceInit: false
@@ -187,6 +119,9 @@ configuration:
     - 172.16.0.0/12
     - 192.168.0.0/16
     - 127.0.0.0/8
+    - 10.42.0.0/16
+    - 10.43.0.0/16
+    - 10.10.0.0/16
   # Template for the configuration.yaml file
   # Used the `tpl` function to render the template, so you can use Go template functions
   templateConfig: |-
@@ -290,7 +225,7 @@ configuration:
 # Persistence values for the Home Assistant instance
 persistence:
   # Enable or disable persistence
-  enabled: false
+  enabled: true
   # Access mode for the persistent volume claim
   accessMode: ReadWriteOnce
   # Size of the persistent volume claim
@@ -311,37 +246,23 @@ persistence:
   matchExpressions: {}
 
 # if you need any additional volumes, you can define them here
-additionalVolumes: []
-  # - name: custom-components
-  #   emptyDir: {}
+additionalVolumes:
+  - hostPath:
+      path: /var/run/dbus
+      type: Directory
+    name: dbus
 
-  # - hostPath:
-  #     path: >-
-  #       /dev/serial/by-id/usb-Silicon_Labs_Sonoff_Zigbee_3.0_USB_Dongle_Plus_0001-if00-port0
-  #     type: CharDevice
-  #   name: usb
 # if you need any additional volume mounts, you can define them here
-additionalMounts: []
-  # - mountPath: /config/custom_components/panasonic_cc
-  #   name: custom-components
-
-  # - mountPath: /dev/ttyACM0
-  #   name: usb
+additionalMounts:
+  - mountPath: /var/run/dbus
+    name: dbus
+    readOnly: true
 
 # if you need to expose additional ports
 additionalPorts: []
-#  - name: sia
-#    containerPort: 8124
-#    protocol: TCP
 
 # if you need to expose additional services
 additionalServices: []
-#  - name: sia
-#    port: 8124
-#    targetPort: sia
-#    type: NodePort
-#    protocol: TCP
-#    nodePort: 30124
 
 livenessProbe:
   failureThreshold: 3
@@ -362,15 +283,6 @@ readinessProbe:
   successThreshold: 1
   timeoutSeconds: 1
 startupProbe: {}
-  # initialDelaySeconds: 1
-  # periodSeconds: 5
-  # timeoutSeconds: 1
-  # successThreshold: 1
-  # failureThreshold: 1
-  # httpGet:
-  #   scheme: HTTP
-  #   path: /
-  #   port: http
 
 serviceMonitor:
   # requires HA integration:  https://www.home-assistant.io/integrations/prometheus/
@@ -379,17 +291,13 @@ serviceMonitor:
   labels: {}
   # Bearer token authentication configuration
   bearerToken: {}
-    # Name of the secret containing the bearer token
-    # secretName: ""
-    # Key in the secret containing the bearer token
-    # secretKey: ""
 
 # Addons configuration for additional services
 addons:
   # Code-server addon configuration
   codeserver:
     # Enable or disable the code-server addon
-    enabled: false
+    enabled: true
     # Resource settings for the code-server container
     resources: {}
     # Image settings for the code-server addon
@@ -409,14 +317,14 @@ addons:
     # Ingress settings for the code-server addon
     ingress:
       # Enable or disable the ingress for the code-server addon
-      enabled: false
+      enabled: true
       # Ingress class name
-      className: ""
+      className: none
       # Ingress annotations
       annotations: {}
       # Ingress hosts configuration
       hosts:
-        - host: chart-example.local
+        - host: code.k3s.home
           paths:
             - path: /
               pathType: ImplementationSpecific
@@ -424,8 +332,10 @@ addons:
       tls: []
     # if you need any additional volume mounts, you can define them here
     additionalMounts: []
-      # - mountPath: /home/coder/.ssh/id_rsa
-      #   name: id-rsa
+    auth:
+      enabled: false
+      existingSecret: ''
+      password: ''
 
 # Controller configuration
 controller:
